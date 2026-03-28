@@ -1,0 +1,16 @@
+aws_region          = "us-west-2"
+project_name        = "finserv-insurance"
+environment         = "demo"
+instance_type       = "t3.micro"
+mysql_root_password = "CHANGE_ME_Root2026!"
+mysql_cdc_password  = "CHANGE_ME_Cdc2026!"
+mysql_database      = "insurance_db"
+s3_bucket_name      = ""
+
+allowed_cidr_blocks = ["0.0.0.0/0"]
+
+tags = {
+  Project     = "FinServ-Insurance-Webinar"
+  ManagedBy   = "Terraform"
+  Environment = "demo"
+}
