@@ -785,5 +785,5 @@ Layer 3: Analytics (INSURANCE_ANALYTICS)
 3. **CDC Metadata Columns:** `_SNOWFLAKE_INSERTED_AT`, `_SNOWFLAKE_UPDATED_AT`, `_SNOWFLAKE_DELETED` should be excluded from output columns unless needed for audit
 4. **View Dependencies:** Analytics views depend on curated views. Build curated layer first.
 5. **Data Types:** `fraud_flag` and `review_flag` and `active` are NUMBER (0/1), not BOOLEAN. Treat as integer in CASE expressions.
-6. **Warehouse:** Use `COCOWH` for all operations
-7. **Role:** Use `CORTEXCODECLIROLE` which owns the source database
+6. **Warehouse:** Use the designated project warehouse for all operations
+7. **Role:** Use the role that owns the source database (INSURANCE_RAW)

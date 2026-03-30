@@ -53,7 +53,7 @@ Real-time data pipeline for insurance underwriting and claims analytics, built f
 
 **AWS:** Credentials configured (`aws configure`) with permissions for EC2, S3, IAM, SSM.
 
-**Snowflake:** Account with Openflow enabled, roles: `CORTEXCODECLIROLE`, `SECURITYADMIN`.
+**Snowflake:** Account with Openflow enabled, roles with appropriate privileges.
 
 ---
 
@@ -130,7 +130,7 @@ cp terraform/terraform.tfvars.example terraform/terraform.tfvars
 ### EC2 Access
 
 ```bash
-aws ssm start-session --target i-0875da06f1fcd78cd --region us-west-2
+aws ssm start-session --target <instance-id> --region us-west-2
 ```
 
 ### MySQL CDC Configuration
@@ -272,8 +272,8 @@ Deploy the `mysql` flow from the Snowflake Openflow Connector Registry via NiFi 
 | Included Table Regex | `.*` | Matches all tables in the database |
 | Object Identifier Resolution | `CASE_INSENSITIVE` | |
 | Snowflake Destination Database | `INSURANCE_RAW` | Must pre-create: `CREATE DATABASE IF NOT EXISTS INSURANCE_RAW` |
-| Snowflake Warehouse | `COCOWH` | |
-| Snowflake Role | `CORTEXCODECLIROLE` | |
+| Snowflake Warehouse | `<your-warehouse>` | |
+| Snowflake Role | `<your-role>` | |
 
 > **Key Detail:** The MySQL connector bundles MariaDB Connector/J, which registers as `jdbc:mariadb://` not `jdbc:mysql://`. Using `jdbc:mysql://` will cause "No suitable driver found" errors.
 
@@ -289,7 +289,7 @@ Upload via NiFi canvas: Parameter Context -> MySQL JDBC Driver -> Upload asset.
 
 ### Step 7: NiFi Canvas Login
 
-> **Important:** ACCOUNTADMIN, ORGADMIN, SECURITYADMIN are **blocked** from NiFi canvas login by design. Use OPENFLOW_ADMIN or CORTEXCODECLIROLE.
+> **Important:** ACCOUNTADMIN, ORGADMIN, SECURITYADMIN are **blocked** from NiFi canvas login by design. Use OPENFLOW_ADMIN or a custom role with appropriate grants.
 
 > **Important:** If your account has a network policy, you may need to temporarily unset it for the OAuth callback:
 > ```sql
@@ -518,7 +518,7 @@ DROP NETWORK RULE IF EXISTS mysql_ec2_network_rule;
 | PickTablesForReplication drops all FlowFiles (In: X, Out: 0) | FQN format mismatch or stale Table State Store | Use `Included Table Regex = .*`; clear Table State Store state |
 | Tables go to FAILED state on snapshot | Stale state or tables already exist in Snowflake | Drop target tables + clear Table State Store |
 | `SNOWFLAKE_OBJECT_ALREADY_EXISTS` | Previous partial snapshot left empty tables | Drop all target tables before re-snapshot |
-| NiFi login blocked ("role explicitly blocked") | ACCOUNTADMIN/ORGADMIN/SECURITYADMIN blocked by design | Use OPENFLOW_ADMIN or CORTEXCODECLIROLE |
+| NiFi login blocked ("role explicitly blocked") | ACCOUNTADMIN/ORGADMIN/SECURITYADMIN blocked by design | Use OPENFLOW_ADMIN or a custom role with appropriate grants |
 | NiFi OAuth callback fails | Account network policy blocks the callback URL | Temporarily `ALTER ACCOUNT UNSET NETWORK_POLICY` |
 | Service user can't login to NiFi | OAuth requires browser login (human user) | Use a human user (not service account) |
 | CASE_INSENSITIVE still creates lowercase names | Known behavior — schema/tables are lowercase | Use quoted identifiers: `"insurance_db"."table"` |
@@ -560,21 +560,23 @@ For detailed troubleshooting and operational runbooks, see **`context.md`**.
 
 ### Current Deployment
 
+> **Note:** Replace `<placeholders>` with your actual deployment values. See `context.md` (local-only) for live values.
+
 | Resource | Value |
 |----------|-------|
-| EC2 Instance | `i-0875da06f1fcd78cd` |
+| EC2 Instance | `<instance-id>` |
 | Region | us-west-2 |
-| Public IP | 34.221.130.212 |
-| JDBC URL | `jdbc:mariadb://34.221.130.212:3306/insurance_db` |
+| Public IP | `<ec2-public-ip>` |
+| JDBC URL | `jdbc:mariadb://<ec2-public-ip>:3306/insurance_db` |
 | CDC User | `openflow_cdc` |
-| S3 Bucket | `finserv-insurance-demo-docs-943644343293` |
-| Snowflake Account | sfsenorthamerica-demo_vsuru |
-| Snowflake Role | CORTEXCODECLIROLE |
-| Snowflake Warehouse | COCOWH |
-| Openflow Runtime | `OPENFLOW_RUNTIME_E16109D5_CDB4_8813_B38C_669AC889C809` |
-| Openflow Data Plane | `OPENFLOW_DATAPLANE_D7AB97D4_08F9_4651_8554_02466A57CBEB` |
-| NiFi Canvas | `https://of--sfsenorthamerica-demo-vsuru.snowflakecomputing.app/finserv-runtime/nifi/` |
-| Account Network Policy | `ACCOUNT_VPN_POLICY_SE` |
+| S3 Bucket | `finserv-insurance-demo-docs-<aws-account-id>` |
+| Snowflake Account | `<your-snowflake-account>` |
+| Snowflake Role | `<your-role>` |
+| Snowflake Warehouse | `<your-warehouse>` |
+| Openflow Runtime | `<your-runtime-integration>` |
+| Openflow Data Plane | `<your-dataplane-integration>` |
+| NiFi Canvas | `https://of--<account>.snowflakecomputing.app/<runtime>/nifi/` |
+| Account Network Policy | `<your-network-policy>` (if applicable) |
 
 ### Snowflake Databases
 
@@ -588,7 +590,7 @@ For detailed troubleshooting and operational runbooks, see **`context.md`**.
 
 ```bash
 # SSM connect to EC2
-aws ssm start-session --target i-0875da06f1fcd78cd --region us-west-2
+aws ssm start-session --target <instance-id> --region us-west-2
 
 # Check MySQL CDC status
 sudo mysql -u root -p'<password>' -e "SHOW GLOBAL VARIABLES LIKE 'gtid_mode'; SHOW GLOBAL VARIABLES LIKE 'binlog_row_metadata';"
