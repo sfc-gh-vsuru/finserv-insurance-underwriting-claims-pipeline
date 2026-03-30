@@ -81,15 +81,9 @@ Finserv_Webinar_May2026/
 ├── mock_data/                        # Data generation & loading
 │   ├── generate_all.py               # Generates ~53,705 rows across 8 CSVs (Faker)
 │   ├── load_to_mysql.py              # Uploads CSVs via S3 → EC2 → MySQL LOAD DATA
-│   └── output/                       # Generated CSV files
-│       ├── customers.csv
-│       ├── policies.csv
-│       ├── underwriting_decisions.csv
-│       ├── claims.csv
-│       ├── claim_payments.csv
-│       ├── underwriters.csv
-│       ├── adjusters.csv
-│       └── risk_factors.csv
+│   ├── generate_incremental.py       # Generates incremental INSERTs/UPDATEs/DELETEs
+│   ├── load_incremental.py           # Executes incremental SQL on EC2 MySQL via SSM
+│   └── output/                       # Generated CSV/SQL files (git-ignored)
 │
 ├── Coalesce_transformation.md        # Transformation plan for Coalesce platform
 │
@@ -360,6 +354,51 @@ GenerateFlowFile
 Incremental Load:
   CaptureChangeMySQL → ... → PutSnowpipeStreaming
 ```
+
+### Incremental CDC Testing
+
+Generate and apply incremental changes (INSERTs, UPDATEs, DELETEs) to test CDC replication:
+
+```bash
+cd mock_data/
+python3 generate_incremental.py       # Generates ~450 SQL statements in output/
+python3 load_incremental.py           # Uploads to S3 → executes on EC2 MySQL via SSM
+```
+
+Requires environment variables (or defaults to values in script):
+
+```bash
+export EC2_INSTANCE_ID=i-XXXXXXXXXXXX
+export MYSQL_PASS='your_password'
+export S3_BUCKET='your-bucket-name'
+```
+
+| Operation | Volume | Tables Affected |
+|-----------|--------|----------------|
+| INSERT | ~305 rows | customers (+50), policies (+80), decisions (+80), claims (+30), payments (+25), risk_factors (+40) |
+| UPDATE | ~105 rows | claims (status transitions), policies (status changes), customers (address changes), decisions (overrides) |
+| DELETE | ~40 rows | risk_factors (reassessment), cancelled policy cascades |
+
+CDC latency is ~60 seconds. Verify in Snowflake:
+
+```sql
+-- Check new rows
+SELECT "claim_id", "claim_number", "status", _SNOWFLAKE_INSERTED_AT
+FROM INSURANCE_RAW."insurance_db"."claims"
+WHERE "claim_id" > 4000 ORDER BY "claim_id" DESC LIMIT 5;
+
+-- Check updates (recent)
+SELECT COUNT(*) FROM INSURANCE_RAW."insurance_db"."claims"
+WHERE _SNOWFLAKE_UPDATED_AT > DATEADD('minute', -5, CURRENT_TIMESTAMP());
+
+-- Check soft deletes
+SELECT COUNT(*) FROM INSURANCE_RAW."insurance_db"."risk_factors"
+WHERE _SNOWFLAKE_DELETED = TRUE;
+```
+
+> **Note:** Openflow CDC creates lowercase column names. You must use quoted identifiers for columns too: `"claim_id"` not `CLAIM_ID`.
+
+> **Note:** DELETEs appear as soft deletes (`_SNOWFLAKE_DELETED = TRUE`), not physical row removal.
 
 ---
 
