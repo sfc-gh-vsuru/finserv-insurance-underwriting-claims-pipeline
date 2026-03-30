@@ -361,16 +361,22 @@ Generate and apply incremental changes (INSERTs, UPDATEs, DELETEs) to test CDC r
 
 ```bash
 cd mock_data/
-python3 generate_incremental.py       # Generates ~450 SQL statements in output/
-python3 load_incremental.py           # Uploads to S3 → executes on EC2 MySQL via SSM
+
+# Single command — queries MySQL max IDs, regenerates SQL, executes:
+EC2_INSTANCE_ID='<your-ec2-instance-id>' MYSQL_PASS='<your-mysql-root-password>' S3_BUCKET='<your-s3-bucket>' python3 load_incremental.py
+
+# Or step-by-step:
+EC2_INSTANCE_ID='...' MYSQL_PASS='...' S3_BUCKET='...' python3 load_incremental.py --query-ids   # Query current max IDs
+python3 generate_incremental.py       # Generates ~450 SQL statements using max IDs
+EC2_INSTANCE_ID='...' MYSQL_PASS='...' S3_BUCKET='...' python3 load_incremental.py               # Uploads to S3 → executes on EC2 MySQL via SSM
 ```
 
-Requires environment variables (or defaults to values in script):
+Required environment variables:
 
 ```bash
-export EC2_INSTANCE_ID=i-XXXXXXXXXXXX
-export MYSQL_PASS='your_password'
-export S3_BUCKET='your-bucket-name'
+export EC2_INSTANCE_ID='<your-ec2-instance-id>'
+export MYSQL_PASS='<your-mysql-root-password>'
+export S3_BUCKET='<your-s3-bucket>'
 ```
 
 | Operation | Volume | Tables Affected |

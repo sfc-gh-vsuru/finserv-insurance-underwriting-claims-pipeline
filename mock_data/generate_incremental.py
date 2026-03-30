@@ -1,4 +1,5 @@
 import os
+import json
 import random
 import hashlib
 from datetime import date, datetime, timedelta
@@ -7,12 +8,35 @@ from faker import Faker
 fake = Faker()
 random.seed()
 
-OUTPUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "output")
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+OUTPUT_DIR = os.path.join(SCRIPT_DIR, "output")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 OUTPUT_FILE = os.path.join(OUTPUT_DIR, "incremental_changes.sql")
+MAX_IDS_FILE = os.path.join(OUTPUT_DIR, "max_ids.json")
 
 TODAY = date.today()
 NOW = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+
+def load_max_ids():
+    defaults = {
+        "customer_id": 5000,
+        "policy_id": 10000,
+        "claim_id": 4000,
+        "payment_id": 7000,
+        "factor_id": 20000,
+        "decision_id": 10000,
+    }
+    if os.path.exists(MAX_IDS_FILE):
+        with open(MAX_IDS_FILE) as f:
+            saved = json.load(f)
+        for k in defaults:
+            if k in saved:
+                defaults[k] = saved[k]
+        print(f"  Loaded max IDs from {MAX_IDS_FILE}")
+    else:
+        print(f"  WARNING: {MAX_IDS_FILE} not found, using defaults. Run load_incremental.py --query-ids first.")
+    return defaults
 
 NEW_CUSTOMERS = 50
 NEW_POLICIES = 80
@@ -75,10 +99,13 @@ def esc(val):
 
 
 def generate_sql():
+    max_ids = load_max_ids()
+
     stmts = []
     stmts.append("-- =============================================================")
     stmts.append(f"-- Incremental CDC test data — generated {NOW}")
     stmts.append("-- Operations: INSERT, UPDATE, DELETE")
+    stmts.append(f"-- Base IDs: {json.dumps(max_ids)}")
     stmts.append("-- =============================================================")
     stmts.append("USE insurance_db;")
     stmts.append("SET FOREIGN_KEY_CHECKS=0;")
@@ -87,7 +114,7 @@ def generate_sql():
     stmts.append("-- -----------------------------------------------------------")
     stmts.append("-- INSERTS: New customers")
     stmts.append("-- -----------------------------------------------------------")
-    cust_start_id = 5001
+    cust_start_id = max_ids["customer_id"] + 1
     for i in range(NEW_CUSTOMERS):
         cid = cust_start_id + i
         dob = fake.date_of_birth(minimum_age=18, maximum_age=75).strftime("%Y-%m-%d")
@@ -111,7 +138,7 @@ def generate_sql():
     stmts.append("-- -----------------------------------------------------------")
     stmts.append("-- INSERTS: New policies for new and existing customers")
     stmts.append("-- -----------------------------------------------------------")
-    pol_start_id = 10001
+    pol_start_id = max_ids["policy_id"] + 1
     new_policies = []
     for i in range(NEW_POLICIES):
         pid = pol_start_id + i
@@ -156,7 +183,7 @@ def generate_sql():
     stmts.append("-- -----------------------------------------------------------")
     stmts.append("-- INSERTS: New claims (recent incidents)")
     stmts.append("-- -----------------------------------------------------------")
-    claim_start_id = 4001
+    claim_start_id = max_ids["claim_id"] + 1
     new_claims = []
     for i in range(NEW_CLAIMS):
         clm_id = claim_start_id + i
@@ -170,7 +197,7 @@ def generate_sql():
         adj_id = random.randint(1, 30)
         fraud = 1 if random.random() < 0.08 else 0
         desc = random.choice(CLAIM_DESCS)
-        clm_num = f"CLM-{reported.year}-{90000 + i:05d}"
+        clm_num = f"CLM-{reported.year}-{clm_id:05d}"
         new_claims.append((clm_id, pid, estimated))
         stmts.append(
             f"INSERT INTO claims (claim_id, claim_number, policy_id, customer_id, incident_date, "
@@ -185,7 +212,7 @@ def generate_sql():
     stmts.append("-- -----------------------------------------------------------")
     stmts.append("-- INSERTS: New claim payments")
     stmts.append("-- -----------------------------------------------------------")
-    pay_start_id = 7001
+    pay_start_id = max_ids["payment_id"] + 1
     for i in range(min(NEW_CLAIM_PAYMENTS, len(new_claims))):
         pay_id = pay_start_id + i
         clm_id, pid, estimated = new_claims[i]
@@ -203,7 +230,7 @@ def generate_sql():
     stmts.append("-- -----------------------------------------------------------")
     stmts.append("-- INSERTS: New risk factors for new policies")
     stmts.append("-- -----------------------------------------------------------")
-    rf_start_id = 20001
+    rf_start_id = max_ids["factor_id"] + 1
     rf_count = 0
     for pid, cid, product, coverage, premium, eff in new_policies[:40]:
         factors = RISK_FACTORS_BY_PRODUCT.get(product, [])
