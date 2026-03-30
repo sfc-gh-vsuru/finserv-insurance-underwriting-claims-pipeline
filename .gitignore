@@ -38,4 +38,3 @@ secrets.toml
 # Local-only docs (contain credentials, IPs, operational details)
 context.md
 DESIGN.md
-Coalesce_transformation.md
