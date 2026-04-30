@@ -1,0 +1,18 @@
+definition_version: 2
+entities:
+  insurance_analytics_dashboard:
+    type: streamlit
+    identifier:
+      name: INSURANCE_ANALYTICS_DASHBOARD
+      database: INSURANCE_ANALYTICS
+      schema: DASHBOARDS
+    query_warehouse: COCOWH
+    main_file: streamlit_app.py
+    artifacts:
+      - streamlit_app.py
+      - pyproject.toml
+      - app_pages/executive_summary.py
+      - app_pages/underwriting_analytics.py
+      - app_pages/claims_analytics.py
+      - app_pages/risk_insights.py
+      - app_pages/ai_intelligence.py

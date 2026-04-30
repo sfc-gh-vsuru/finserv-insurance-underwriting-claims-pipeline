@@ -14,8 +14,8 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 NUM_CUSTOMERS = 5000
 NUM_POLICIES = 10000
-NUM_CLAIMS = 4000
-NUM_CLAIM_PAYMENTS = 6000
+NUM_CLAIMS = 2000
+NUM_CLAIM_PAYMENTS = 4000
 NUM_UNDERWRITERS = 25
 NUM_ADJUSTERS = 30
 NUM_RISK_FACTORS = 20000
@@ -113,11 +113,19 @@ COVERAGE_RANGES = {
 }
 
 PREMIUM_RATE = {
-    "AUTO":       (0.03, 0.08),
-    "HOME":       (0.003, 0.012),
-    "LIFE":       (0.005, 0.025),
-    "HEALTH":     (0.04, 0.12),
-    "COMMERCIAL": (0.01, 0.04),
+    "AUTO":       (0.04, 0.10),
+    "HOME":       (0.006, 0.018),
+    "LIFE":       (0.01, 0.035),
+    "HEALTH":     (0.05, 0.14),
+    "COMMERCIAL": (0.015, 0.05),
+}
+
+CLAIM_AMOUNT_RANGES = {
+    "AUTO":       (1500, 30000),
+    "HOME":       (2000, 50000),
+    "LIFE":       (10000, 200000),
+    "HEALTH":     (3000, 80000),
+    "COMMERCIAL": (25000, 500000),
 }
 
 DEDUCTIBLE_RANGES = {
@@ -430,13 +438,14 @@ def generate_claims(policies):
         reported = min(incident + timedelta(days=report_delay), END_DATE)
 
         coverage = float(pol[4])
-        est_pct = random.uniform(0.02, 0.6)
-        estimated = round(coverage * est_pct, 2)
+        amt_min, amt_max = CLAIM_AMOUNT_RANGES.get(product, (1000, 50000))
+        estimated = round(random.uniform(amt_min, amt_max), 2)
+        estimated = min(estimated, coverage)
 
         status = random.choices(CLAIM_STATUSES, weights=CLAIM_STATUS_WEIGHTS, k=1)[0]
 
         if status in ("APPROVED", "SETTLED", "CLOSED"):
-            approved = round(estimated * random.uniform(0.5, 1.1), 2)
+            approved = round(estimated * random.uniform(0.5, 0.95), 2)
         elif status == "DENIED":
             approved = 0
         else:

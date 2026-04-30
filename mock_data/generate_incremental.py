@@ -22,8 +22,8 @@ def load_max_ids():
     defaults = {
         "customer_id": 5000,
         "policy_id": 10000,
-        "claim_id": 4000,
-        "payment_id": 7000,
+        "claim_id": 2000,
+        "payment_id": 2333,
         "factor_id": 20000,
         "decision_id": 10000,
     }
@@ -70,6 +70,27 @@ OCCUPATIONS = [
     "Software Engineer", "Teacher", "Nurse", "Accountant", "Sales Manager",
     "Electrician", "Attorney", "Physician", "Pharmacist", "Architect",
 ]
+COVERAGE_RANGES = {
+    "AUTO":       (15000, 100000),
+    "HOME":       (150000, 750000),
+    "LIFE":       (100000, 2000000),
+    "HEALTH":     (50000, 500000),
+    "COMMERCIAL": (500000, 5000000),
+}
+PREMIUM_RATE = {
+    "AUTO":       (0.04, 0.10),
+    "HOME":       (0.006, 0.018),
+    "LIFE":       (0.01, 0.035),
+    "HEALTH":     (0.05, 0.14),
+    "COMMERCIAL": (0.015, 0.05),
+}
+CLAIM_AMOUNT_RANGES = {
+    "AUTO":       (1500, 30000),
+    "HOME":       (2000, 50000),
+    "LIFE":       (10000, 200000),
+    "HEALTH":     (3000, 80000),
+    "COMMERCIAL": (25000, 500000),
+}
 RISK_FACTORS_BY_PRODUCT = {
     "AUTO": [("DRIVING_RECORD", "Clean"), ("VEHICLE_AGE", "0-2 years"), ("ANNUAL_MILEAGE", "Under 5K")],
     "HOME": [("PROPERTY_AGE", "0-5 years"), ("ROOF_CONDITION", "Good"), ("FLOOD_ZONE", "None")],
@@ -144,8 +165,10 @@ def generate_sql():
         pid = pol_start_id + i
         cid = random.choice(list(range(cust_start_id, cust_start_id + NEW_CUSTOMERS)) + list(range(1, 100)))
         product = random.choices(PRODUCT_TYPES, weights=PRODUCT_WEIGHTS, k=1)[0]
-        coverage = round(random.uniform(20000, 1000000), 2)
-        premium = round(coverage * random.uniform(0.01, 0.08), 2)
+        coverage_min, coverage_max = COVERAGE_RANGES.get(product, (20000, 500000))
+        coverage = round(random.uniform(coverage_min, coverage_max), 2)
+        rate_min, rate_max = PREMIUM_RATE.get(product, (0.04, 0.10))
+        premium = round(coverage * random.uniform(rate_min, rate_max), 2)
         deductible = round(random.uniform(250, 5000), 2)
         eff = TODAY - timedelta(days=random.randint(0, 30))
         exp = eff + timedelta(days=365)
@@ -192,10 +215,11 @@ def generate_sql():
         claim_type = random.choice(CLAIM_TYPES_BY_PRODUCT.get(product, ["PROPERTY"]))
         incident = TODAY - timedelta(days=random.randint(0, 14))
         reported = incident + timedelta(days=random.randint(0, 3))
-        estimated = round(random.uniform(500, 50000), 2)
+        amt_min, amt_max = CLAIM_AMOUNT_RANGES.get(product, (1000, 50000))
+        estimated = round(random.uniform(amt_min, amt_max), 2)
         priority = random.choice(PRIORITIES)
         adj_id = random.randint(1, 30)
-        fraud = 1 if random.random() < 0.08 else 0
+        fraud = 1 if random.random() < 0.05 else 0
         desc = random.choice(CLAIM_DESCS)
         clm_num = f"CLM-{reported.year}-{clm_id:05d}"
         new_claims.append((clm_id, pid, estimated))
@@ -259,10 +283,10 @@ def generate_sql():
     ]
     for i in range(UPDATE_CLAIM_STATUSES):
         old_status, new_status = random.choice(transitions)
-        claim_id = random.randint(1, 4000)
+        claim_id = random.randint(1, max_ids["claim_id"])
         approved_clause = ""
         if new_status == "APPROVED":
-            approved_clause = f", approved_amount = estimated_amount * {round(random.uniform(0.6, 1.0), 2)}"
+            approved_clause = f", approved_amount = estimated_amount * {round(random.uniform(0.5, 0.95), 2)}"
         elif new_status == "DENIED":
             approved_clause = ", approved_amount = 0"
         stmts.append(

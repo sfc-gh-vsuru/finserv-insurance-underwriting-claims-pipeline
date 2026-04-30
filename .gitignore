@@ -34,7 +34,11 @@ Thumbs.db
 *.pem
 *.key
 secrets.toml
+coalesce_trigger_config.json
 
 # Local-only docs (contain credentials, IPs, operational details)
 context.md
 DESIGN.md
+
+# Screenshots
+*.png
