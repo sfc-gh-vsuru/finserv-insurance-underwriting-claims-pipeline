@@ -35,6 +35,8 @@ Thumbs.db
 *.key
 secrets.toml
 coalesce_trigger_config.json
+coalesce_trigger_config_OLD.json
+run_incremental.sh
 
 # Local-only docs (contain credentials, IPs, operational details)
 context.md
@@ -42,3 +44,9 @@ DESIGN.md
 
 # Screenshots
 *.png
+
+# Stale app_pages (replaced by pages/)
+streamlit_app/app_pages/
+
+# Local caches
+skills/
