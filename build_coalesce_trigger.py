@@ -29,8 +29,8 @@ except ImportError:
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 CONFIG_FILE = os.path.join(SCRIPT_DIR, "coalesce_trigger_config.json")
-PROFILE_NAME = "finserv_runtime"
-NIFI_URL = "https://of--sfsenorthamerica-demo-vsuru.snowflakecomputing.app/finserv-runtime/nifi-api"
+PROFILE_NAME = os.getenv("NIFI_PROFILE", "finserv_runtime")
+NIFI_URL = os.getenv("NIFI_URL", "https://of--YOUR_ACCOUNT.snowflakecomputing.app/YOUR_RUNTIME/nifi-api")
 
 def load_config():
     with open(CONFIG_FILE, "r") as f:
